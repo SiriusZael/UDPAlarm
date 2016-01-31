@@ -1,0 +1,28 @@
+bool translate(byte packetBuffer[]) {
+  if(packetBuffer[6] == 'P'&& packetBuffer[15] == 'E') { // double check we get all the message
+    temp_Type = UDPBool(packetBuffer[0]);  // convert the temp type (0 F, 1 C)
+    brightness = packetBuffer[1];  // get brightness settings
+    matrix.setBrightness(brightness); // Set the brightness of the leds 0 > 15
+    unsigned long highWord = word(packetBuffer[2], packetBuffer[3]); // Merge two bytes into a int
+    unsigned long  lowWord = word(packetBuffer[4], packetBuffer[5]); // Merge two bytes into a int
+    unsigned long whereonearth = highWord << 16 | lowWord; // Combine the 4 bytes into a long int
+    WOEID = String(whereonearth); //get WOEID
+    disp_Mil = UDPBool(packetBuffer[7]); // get Millitary (1 24, 0 12)
+    int THold = packetBuffer[8];
+    timeZone = THold-12; // get timezone & convert 0 > 26 to -12 to 14 hrs
+    snooze = packetBuffer[9]; // get Snooze Time
+    for(int i = 10; i<=12; i++) { // Get Hour (0), Min(1) and Sec(2) alarm settings
+      int v = i-10;
+      alarm[v] = packetBuffer[i];
+    }
+    DS3231_set_a1(alarm[2],alarm[1],alarm[0],0,flags);  // set alarm
+    alarm_enable = UDPBool(packetBuffer[13]);  // See if the alarm is active
+    if(alarm_enable) DS3231_set_creg(DS3231_INTCN | DS3231_A1IE);  // if active activate alarm
+    silence = packetBuffer[14]; // get Silence after x mins settings
+    set_eeprom(brightness,packetBuffer[2],packetBuffer[3],packetBuffer[4],packetBuffer[5], disp_Mil, THold, snooze, alarm, alarm_enable, silence); 
+    return true;
+  } else {
+    Serial.println("Incorrect Format for UDP");
+    return false;
+  }
+}
